@@ -891,6 +891,9 @@ public class Main extends JPanel implements EmulatorSession {
 						.getFullHeight());
 				if (SwingDialogWindow.show(getOwnerFrame(), "Enter new size...", resizeDeviceDisplayDialog, true)) {
 				    setDeviceSize(deviceDisplay, resizeDeviceDisplayDialog.getDeviceDisplayWidth(), resizeDeviceDisplayDialog.getDeviceDisplayHeight());
+					if (ownerWindow != null) {
+						ownerWindow.pack();
+					}
 					revalidate();
 					devicePanel.requestFocus();
 				}
@@ -1035,16 +1038,17 @@ public class Main extends JPanel implements EmulatorSession {
 			}
 		}
 
+		boolean defaultDeviceSelected = false;
 		try {
-			common.initParams(params, selectDevicePanel.getSelectedDeviceEntry(), J2SEDevice.class);
+			defaultDeviceSelected = common.initParams(params, selectDevicePanel.getSelectedDeviceEntry(), J2SEDevice.class);
 		} catch (Throwable e) {
 			Logger.error("Unable to initialize emulator", e);
 		}
 
 		deviceEntry = selectDevicePanel.getSelectedDeviceEntry();
-		if (DeviceFactory.getDevice() != null) {
+		if (defaultDeviceSelected && DeviceFactory.getDevice() != null) {
 			DeviceDisplayImpl deviceDisplay = (DeviceDisplayImpl) DeviceFactory.getDevice().getDeviceDisplay();
-			if (deviceDisplay.isResizable() && deviceEntry != null) {
+			if (deviceDisplay.isResizable()) {
 				Rectangle size = Config.getDeviceEntryDisplaySize(deviceEntry);
 				if (size != null) {
 					setDeviceSize(deviceDisplay, size.width, size.height);
