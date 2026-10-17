@@ -45,6 +45,7 @@
                             <output>${basedir}/target/classes</output>
                             <signature>${basedir}/src/test/resources/midpapi20-signature.xml</signature>
                             <classVersion>1.1</classVersion>
+                            <useSystemClassPath>true</useSystemClassPath>
                             <stubException>java.lang.Error</stubException>
                             <stubExceptionMessage>API Stub has been used</stubExceptionMessage>
                         </configuration>
@@ -53,9 +54,9 @@
             </plugin>
 
             <plugin>
-                <groupId>com.pyx4me</groupId>
+                <groupId>com.github.wvengen</groupId>
                 <artifactId>proguard-maven-plugin</artifactId>
-                <version>${pyx4meVersion}</version>
+                <version>2.7.0</version>
                 <executions>
                    <execution>
                        <phase>package</phase>

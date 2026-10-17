@@ -125,6 +125,11 @@ public class Config {
 				createDefaultConfigXml();
 			}
 		}
+		// Window geometry is not persisted, drop any previously saved <windows> element
+		XMLElement windowsXml = configXml.getChild("windows");
+		if (windowsXml != null) {
+			configXml.removeChild(windowsXml);
+		}
 		urlsMRU.read(configXml.getChildOrNew("files").getChildOrNew("recent"));
 		initSystemProperties();
 	}
@@ -506,23 +511,7 @@ public class Config {
 	}
 
 	public static void setWindow(String name, Rectangle window, boolean onStart) {
-		XMLElement windowsXml = configXml.getChildOrNew("windows");
-		XMLElement mainXml = windowsXml.getChildOrNew(name);
-		if (onStart) {
-			mainXml.setAttribute("onstart", "true");
-		} else {
-			mainXml.removeAttribute("onstart");
-		}
-		XMLElement xml = mainXml.getChildOrNew("x");
-		xml.setContent(String.valueOf(window.x));
-		xml = mainXml.getChildOrNew("y");
-		xml.setContent(String.valueOf(window.y));
-		xml = mainXml.getChildOrNew("width");
-		xml.setContent(String.valueOf(window.width));
-		xml = mainXml.getChildOrNew("height");
-		xml.setContent(String.valueOf(window.height));
-
-		saveConfig();
+		// Window geometry is intentionally not persisted to config2.xml
 	}
 
 	public static String getRecentDirectory(String key) {
