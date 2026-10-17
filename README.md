@@ -39,6 +39,12 @@ Bản fork bổ sung **thanh tab kiểu Chrome** để chạy **nhiều game J2M
 - Sửa cấu hình `pom.xml` các module (`api/*`, `microemu-cldc`, `microemu-midp`, `microemu-javase-applet`, ...) và `proguard.conf` để build được với toolchain hiện tại.
 - `Config` **không còn lưu/khôi phục kích thước cửa sổ** (window geometry) — tránh việc vị trí/kích thước cũ ghi đè kích thước thiết bị.
 
+### 6. Sửa nhập liệu bàn phím (ký tự `@`, ô email)
+
+- `J2SEInputMethod.fireInputMethodListener`: ký tự gõ từ bàn phím PC (ví dụ `@` = Shift+2) nay được chèn trực tiếp, chỉ lọc theo ràng buộc `TextField`. Trước đây ký tự chỉ được chèn nếu nó thuộc bộ ký tự của đúng phím điện thoại mà phím PC ánh xạ tới, nên `@` (nằm ở phím "1" nhưng Shift+2 lại ánh xạ phím "2") bị loại bỏ.
+- `InputMethodImpl.filterConstraints`: bổ sung xử lý ràng buộc `TextField.EMAILADDR` (trước đây là `// TODO` → lọc bỏ mọi ký tự, không gõ được gì vào ô email).
+
+
 ## Cấu trúc file chính
 
 | File | Vai trò |

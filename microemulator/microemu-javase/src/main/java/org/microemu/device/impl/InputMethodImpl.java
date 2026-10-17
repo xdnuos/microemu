@@ -152,7 +152,11 @@ public abstract class InputMethodImpl extends InputMethod implements Runnable {
                     j++;
                     break;
                 case TextField.EMAILADDR :
-                    // TODO
+                    if (Character.isLetterOrDigit(chars[i]) || chars[i] == '@' || chars[i] == '.'
+                            || chars[i] == '_' || chars[i] == '-' || chars[i] == '+') {
+                        result[j] = chars[i];
+                        j++;
+                    }
                     break;
                 case TextField.NUMERIC :
                     if (Character.isDigit(chars[i]) || chars[i] == '-') {

@@ -271,16 +271,12 @@ public class J2SEInputMethod extends InputMethodImpl {
 				lastButtonCharIndex++;
 				char[] buttonChars = filterConstraints(filterInputMode(button.getChars(getInputMode())));
 				if (keyChar != '\0') {
-					// Pass through letters and characters typed on keyboard but
-					// not numbers that are buttons keys (presumably).
-                    boolean found = false;
-                    for (int i = 0; i < buttonChars.length; i++) {
-                        if (buttonChars[i] == keyChar) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) {
+					// Pass through characters typed on the PC keyboard, filtered
+					// only by the TextField constraints. The character does not
+					// have to belong to the physical button this key maps to, so
+					// that punctuation like '@' (Shift+2) can be entered.
+                    char[] allowedChars = filterConstraints(new char[] { keyChar });
+                    if (allowedChars.length == 1) {
     					editText.append(keyChar);
     					caret++;
     					lastButton = null;
