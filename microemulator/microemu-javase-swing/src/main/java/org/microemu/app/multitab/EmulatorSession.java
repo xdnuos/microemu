@@ -89,6 +89,13 @@ public interface EmulatorSession {
 	void setDeviceChangeListener(Runnable listener);
 
 	/**
+	 * Registers a callback invoked whenever the session title changes (for
+	 * example after a MIDlet suite has been loaded), so the host can refresh
+	 * the tab label.
+	 */
+	void setTitleChangeListener(Runnable listener);
+
+	/**
 	 * Pauses the MIDlet (window minimized).
 	 */
 	void pauseMIDlet();

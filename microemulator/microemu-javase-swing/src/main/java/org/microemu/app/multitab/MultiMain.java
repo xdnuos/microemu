@@ -118,8 +118,8 @@ public class MultiMain extends JFrame {
 
 	private String nextTitle(EmulatorSession session) {
 		String title = session.getTitle();
-		if (title == null || title.length() == 0) {
-			title = "Tab " + (tabCounter + 1);
+		if (title == null || title.length() == 0 || "MicroEmulator".equals(title)) {
+			title = "Tab " + tabCounter;
 		}
 		return title;
 	}
@@ -142,6 +142,15 @@ public class MultiMain extends JFrame {
 			session.setDeviceChangeListener(new Runnable() {
 				public void run() {
 					propagateDevice(session);
+				}
+			});
+			session.setTitleChangeListener(new Runnable() {
+				public void run() {
+					SwingUtilities.invokeLater(new Runnable() {
+						public void run() {
+							refreshTabTitles();
+						}
+					});
 				}
 			});
 
@@ -242,7 +251,7 @@ public class MultiMain extends JFrame {
 		for (int i = 0; i < sessions.size(); i++) {
 			SessionHolder holder = sessions.get(i);
 			String title = holder.session.getTitle();
-			if (title != null && title.length() > 0 && holder.titleLabel != null) {
+			if (title != null && title.length() > 0 && !"MicroEmulator".equals(title) && holder.titleLabel != null) {
 				holder.titleLabel.setText(title);
 			}
 		}

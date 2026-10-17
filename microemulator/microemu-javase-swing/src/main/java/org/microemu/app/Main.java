@@ -194,6 +194,8 @@ public class Main extends JPanel implements EmulatorSession {
 
 	private Runnable deviceChangeListener;
 
+	private Runnable titleChangeListener;
+
 	protected EmulatorContext emulatorContext = new EmulatorContext() {
 
 		private InputMethod inputMethod = new J2SEInputMethod();
@@ -879,6 +881,11 @@ public class Main extends JPanel implements EmulatorSession {
 		this.common = new Common(emulatorContext);
 		this.common.setStatusBarListener(statusBarListener);
 		this.common.setResponseInterfaceListener(responseInterfaceListener);
+		this.common.setMidletOpenedListener(new Runnable() {
+			public void run() {
+				midletOpened();
+			}
+		});
 		this.common.loadImplementationsFromConfig();
 
 		this.resizeButton.addActionListener(new ActionListener() {
@@ -1064,17 +1071,29 @@ public class Main extends JPanel implements EmulatorSession {
 
 		common.initMIDlet(true);
 
+		midletOpened();
+
 		responseInterfaceListener.stateChanged(true);
 	}
 
 	public void openMIDlet(String url) {
 		Common.openMIDletUrlSafe(url);
+		if (recordStoreManagerDialog != null) {
+			recordStoreManagerDialog.refresh();
+		}
+	}
+
+	public void setTitleChangeListener(Runnable listener) {
+		this.titleChangeListener = listener;
+	}
+
+	private void midletOpened() {
 		String name = common.getSuiteName();
 		if (name != null && name.length() > 0) {
 			title = name;
 		}
-		if (recordStoreManagerDialog != null) {
-			recordStoreManagerDialog.refresh();
+		if (titleChangeListener != null) {
+			titleChangeListener.run();
 		}
 	}
 

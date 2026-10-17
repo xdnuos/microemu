@@ -132,6 +132,8 @@ public class Common implements MicroEmulator, CommonInterface {
 
     private boolean exitOnMIDletDestroy = false;
 
+    private Runnable midletOpenedListener = null;
+
     public Common(EmulatorContext context) {
         instance = this;
         this.emulatorContext = context;
@@ -385,6 +387,10 @@ public class Common implements MicroEmulator, CommonInterface {
             }
 
             Config.getUrlsMRU().push(new MidletURLReference(jad.getSuiteName(), urlString));
+
+            if (midletOpenedListener != null) {
+                midletOpenedListener.run();
+            }
         } catch (MalformedURLException ex) {
             throw ex;
         } catch (ClassNotFoundException ex) {
@@ -480,6 +486,14 @@ public class Common implements MicroEmulator, CommonInterface {
 
     public void setStatusBarListener(StatusBarListener listener) {
         statusBarListener = listener;
+    }
+
+    /**
+     * Registers a callback invoked after a MIDlet has been successfully opened
+     * and loaded (for example to update the host tab title).
+     */
+    public void setMidletOpenedListener(Runnable listener) {
+        this.midletOpenedListener = listener;
     }
 
     public int checkPermission(String permission) {
