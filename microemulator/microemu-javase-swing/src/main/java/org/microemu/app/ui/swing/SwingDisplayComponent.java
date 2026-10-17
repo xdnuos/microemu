@@ -76,6 +76,8 @@ public class SwingDisplayComponent extends JComponent implements DisplayComponen
 
 	private boolean showMouseCoordinates = false;
 
+	private int frameCount = 0;
+
 	private Point pressedPoint = new Point();
 
 	private MouseAdapter mouseListener = new MouseAdapter() {
@@ -285,11 +287,24 @@ public class SwingDisplayComponent extends JComponent implements DisplayComponen
 	}
 
 	protected void paintComponent(Graphics g) {
+		synchronized (this) {
+			frameCount++;
+		}
 		if (graphicsSurface != null) {
 			synchronized (graphicsSurface) {
 				g.drawImage(graphicsSurface.getImage(), 0, 0, null);
 			}
 		}
+	}
+
+	/**
+	 * Returns the number of frames painted since the last call and resets the
+	 * counter. Used to display the frame rate.
+	 */
+	public synchronized int getAndResetFrameCount() {
+		int count = frameCount;
+		frameCount = 0;
+		return count;
 	}
 
 	public void repaintRequest(int x, int y, int width, int height) {

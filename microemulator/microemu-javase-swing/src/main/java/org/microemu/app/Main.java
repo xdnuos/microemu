@@ -184,6 +184,10 @@ public class Main extends JPanel implements EmulatorSession {
 
 	private ResizeDeviceDisplayDialog resizeDeviceDisplayDialog = null;
 
+	private JLabel fpsLabel = new JLabel("FPS: --");
+
+	private javax.swing.Timer fpsTimer;
+
 	private JMenuBar menuBar;
 
 	private String title = "MicroEmulator";
@@ -916,9 +920,28 @@ public class Main extends JPanel implements EmulatorSession {
 		statusPanel.add(statusBar, "West");
 		statusPanel.add(this.resizeButton, "East");
 
+		// Show the frame rate in the middle of the bottom bar.
+		fpsLabel.setHorizontalAlignment(JLabel.CENTER);
+		statusPanel.add(fpsLabel, BorderLayout.CENTER);
+
 		add(statusPanel, BorderLayout.SOUTH);
 
+		fpsTimer = new javax.swing.Timer(1000, new ActionListener() {
+			public void actionPerformed(ActionEvent ev) {
+				updateFps();
+			}
+		});
+		fpsTimer.start();
+
 		devicePanel.setTransferHandler(new DropTransferHandler());
+	}
+
+	private void updateFps() {
+		DisplayComponent displayComponent = devicePanel.getDisplayComponent();
+		if (displayComponent instanceof SwingDisplayComponent) {
+			int frames = ((SwingDisplayComponent) displayComponent).getAndResetFrameCount();
+			fpsLabel.setText("FPS: " + frames);
+		}
 	}
 
 	protected Component createContents(Container parent) {
@@ -1147,6 +1170,9 @@ public class Main extends JPanel implements EmulatorSession {
 	}
 
 	public void disposeSession() {
+		if (fpsTimer != null) {
+			fpsTimer.stop();
+		}
 		try {
 			MIDletAccess midletAccess = MIDletBridge.getMIDletAccess();
 			if (midletAccess != null) {

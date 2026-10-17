@@ -51,6 +51,12 @@ Bản fork bổ sung **thanh tab kiểu Chrome** để chạy **nhiều game J2M
 - Thêm **Copy** / **Select All**: menu chuột phải trong vùng log và menu "Log" của cửa sổ Log console.
 - `LogTextArea.append`: khi người dùng đang có vùng chọn (để copy), không tự nhảy caret về cuối/mất vùng chọn nữa — nhờ vậy vẫn copy được trong lúc log đang chạy.
 
+### 8. Hiển thị FPS
+
+- `SwingDisplayComponent` đếm số frame thực sự vẽ trong `paintComponent` và cung cấp `getAndResetFrameCount()`.
+- `Main`: thêm nhãn `FPS: <n>` đặt ở **giữa** thanh dưới cùng (thanh chứa nút **Resize**), cập nhật mỗi giây bằng một `javax.swing.Timer`. Mỗi tab hiển thị FPS riêng; timer được dừng khi đóng tab (`disposeSession`).
+
+
 
 
 
