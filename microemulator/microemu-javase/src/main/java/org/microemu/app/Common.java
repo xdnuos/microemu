@@ -241,9 +241,28 @@ public class Common implements MicroEmulator, CommonInterface {
      */
     public static void openMIDletUrlSafe(String urlString) {
         try {
-            getInstance().openMIDletUrl(urlString);
+            Common common = getInstance();
+            common.openMIDletUrl(urlString);
+            // Go straight into the game instead of leaving the user on the
+            // launcher's "Start" screen.
+            common.startFirstMIDlet();
         } catch (IOException e) {
             Message.error("Unable to open jad " + urlString, e);
+        }
+    }
+
+    /**
+     * Starts the first MIDlet of the currently loaded suite directly, skipping
+     * the launcher. Does nothing when the suite contains no MIDlet.
+     */
+    public void startFirstMIDlet() {
+        Launcher currentLauncher = getLauncher();
+        if (currentLauncher == null) {
+            return;
+        }
+        MIDletEntry entry = currentLauncher.getSelectedMidletEntry();
+        if (entry != null) {
+            initMIDlet(true, entry);
         }
     }
 

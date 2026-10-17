@@ -56,6 +56,13 @@ Bản fork bổ sung **thanh tab kiểu Chrome** để chạy **nhiều game J2M
 - `SwingDisplayComponent` đếm số frame thực sự vẽ trong `paintComponent` và cung cấp `getAndResetFrameCount()`.
 - `Main`: thêm nhãn `FPS: <n>` đặt ở **giữa** thanh dưới cùng (thanh chứa nút **Resize**), cập nhật mỗi giây bằng một `javax.swing.Timer`. Mỗi tab hiển thị FPS riêng; timer được dừng khi đóng tab (`disposeSession`).
 
+### 9. Mở file là vào game luôn (bỏ màn hình "Start")
+
+- Mặc định khi mở file `.jar`/`.jad` (File > Open, Open URL, danh sách gần đây, kéo-thả) MicroEmulator chỉ hiện màn hình **Launcher** và phải bấm **Start** mới vào game.
+- `Common.startFirstMIDlet()`: tự chạy MIDlet đầu tiên của suite vừa nạp.
+- `Common.openMIDletUrlSafe()`: sau khi nạp, gọi `startFirstMIDlet()` để vào game ngay.
+- Chỉ áp dụng cho thao tác mở do người dùng (File/URL/MRU/kéo-thả). Khi mở bằng **dòng lệnh** thì trước đó đã tự start sẵn, không bị start hai lần.
+
 
 
 
