@@ -44,6 +44,13 @@ Bản fork bổ sung **thanh tab kiểu Chrome** để chạy **nhiều game J2M
 - `J2SEInputMethod.fireInputMethodListener`: ký tự gõ từ bàn phím PC (ví dụ `@` = Shift+2) nay được chèn trực tiếp, chỉ lọc theo ràng buộc `TextField`. Trước đây ký tự chỉ được chèn nếu nó thuộc bộ ký tự của đúng phím điện thoại mà phím PC ánh xạ tới, nên `@` (nằm ở phím "1" nhưng Shift+2 lại ánh xạ phím "2") bị loại bỏ.
 - `InputMethodImpl.filterConstraints`: bổ sung xử lý ràng buộc `TextField.EMAILADDR` (trước đây là `// TODO` → lọc bỏ mọi ký tự, không gõ được gì vào ô email).
 
+### 7. Cửa sổ Log console — chọn và copy được
+
+- `LogTextArea`: `setEditable(false)` khiến `JTextComponent` mặc định **không focusable**, nên không chọn/Ctrl+C được. Nay gọi `setFocusable(true)` để chọn và copy log.
+- Thêm **Copy** / **Select All**: menu chuột phải trong vùng log và menu "Log" của cửa sổ Log console.
+- `LogTextArea.append`: khi người dùng đang có vùng chọn (để copy), không tự nhảy caret về cuối/mất vùng chọn nữa — nhờ vậy vẫn copy được trong lúc log đang chạy.
+
+
 
 ## Cấu trúc file chính
 

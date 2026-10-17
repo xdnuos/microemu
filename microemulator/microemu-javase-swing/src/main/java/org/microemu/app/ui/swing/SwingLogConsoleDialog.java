@@ -106,6 +106,22 @@ public class SwingLogConsoleDialog extends JFrame implements LoggerAppender {
 		});
 		menu.add(menuClear);
 
+		JMenuItem menuCopy = new JMenuItem("Copy");
+		menuCopy.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SwingLogConsoleDialog.this.logArea.copy();
+			}
+		});
+		menu.add(menuCopy);
+
+		JMenuItem menuSelectAll = new JMenuItem("Select All");
+		menuSelectAll.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SwingLogConsoleDialog.this.logArea.selectAll();
+			}
+		});
+		menu.add(menuSelectAll);
+
 		menu.addSeparator();
 
 		final JCheckBoxMenuItem menuRecordLocation = new JCheckBoxMenuItem("Show record location");

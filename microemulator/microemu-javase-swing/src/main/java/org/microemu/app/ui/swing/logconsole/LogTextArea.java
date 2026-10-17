@@ -31,7 +31,11 @@ package org.microemu.app.ui.swing.logconsole;
  *
  */
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
 import javax.swing.JViewport;
 
@@ -49,6 +53,27 @@ public class LogTextArea extends JTextArea {
 		setCaret(caret);
 		//this.maxLines = maxLines;
 		setEditable(false);
+		// A non-editable JTextComponent is not focusable by default, which
+		// prevents selecting text and copying it (Ctrl+C). Keep it focusable
+		// so the log can be selected and copied.
+		setFocusable(true);
+
+		JPopupMenu popup = new JPopupMenu();
+		JMenuItem copyItem = new JMenuItem("Copy");
+		copyItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				copy();
+			}
+		});
+		popup.add(copyItem);
+		JMenuItem selectAllItem = new JMenuItem("Select All");
+		selectAllItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				selectAll();
+			}
+		});
+		popup.add(selectAllItem);
+		setComponentPopupMenu(popup);
 	}
 
 	public void setText(String t) {
@@ -59,7 +84,15 @@ public class LogTextArea extends JTextArea {
 	public void append(String str) {
 
 		super.append(str);
-		
+
+		// While the user has a selection (e.g. to copy the log), do not move
+		// the caret or the viewport, otherwise the selection would be lost
+		// every time a new log line arrives.
+		if (getSelectionStart() != getSelectionEnd()) {
+			caret.setVisibilityAdjustment(false);
+			return;
+		}
+
 		JViewport viewport = (JViewport) getParent();
 		boolean scrollToBottom = Math.abs(viewport.getViewPosition().getY() - (getHeight() - viewport.getHeight())) < 100;
 
