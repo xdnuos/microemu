@@ -46,9 +46,11 @@ Bản fork bổ sung **thanh tab kiểu Chrome** để chạy **nhiều game J2M
 
 ### 7. Cửa sổ Log console — chọn và copy được
 
-- `LogTextArea`: `setEditable(false)` khiến `JTextComponent` mặc định **không focusable**, nên không chọn/Ctrl+C được. Nay gọi `setFocusable(true)` để chọn và copy log.
+- `Main`: bỏ `setFocusableWindowState(false)` trên cửa sổ Log console (chỉ giữ lại trên MacOS, nơi nó tránh NPE sau `pack()`). Trước đây cửa sổ không nhận focus nên **không thể bôi đen chọn text hay Ctrl+C**.
+- `LogTextArea`: `setEditable(false)` khiến `JTextComponent` mặc định **không focusable**, nên nay gọi `setFocusable(true)` để chọn và copy log.
 - Thêm **Copy** / **Select All**: menu chuột phải trong vùng log và menu "Log" của cửa sổ Log console.
 - `LogTextArea.append`: khi người dùng đang có vùng chọn (để copy), không tự nhảy caret về cuối/mất vùng chọn nữa — nhờ vậy vẫn copy được trong lúc log đang chạy.
+
 
 
 

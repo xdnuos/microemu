@@ -505,8 +505,12 @@ public class Main extends JPanel implements EmulatorSession {
 					}
 				});
 				logConsoleDialog.pack();
-				// To avoid NPE on MacOS setFocusableWindowState(false) have to be called after pack()
-				logConsoleDialog.setFocusableWindowState(false);
+				// On MacOS setFocusableWindowState(false) avoids an NPE after pack(),
+				// but a non-focusable window also prevents selecting/copying the log,
+				// so only apply it on MacOS.
+				if (System.getProperty("os.name", "").startsWith("Mac")) {
+					logConsoleDialog.setFocusableWindowState(false);
+				}
 				Rectangle window = Config.getWindow("logConsole", new Rectangle(0, 0, 640, 320));
 				logConsoleDialog.setBounds(window.x, window.y, window.width, window.height);
 			}
