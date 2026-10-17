@@ -29,9 +29,10 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
+import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
@@ -53,16 +54,16 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.Iterator;                                                            
-import java.util.List;                                                                
-import java.util.NoSuchElementException;                                              
-import java.util.Timer;                                                               
-import java.util.TimerTask; 
+import java.util.Iterator;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import javax.microedition.midlet.MIDletStateChangeException;
+import javax.microedition.midlet.MIDlet;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -72,6 +73,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import org.microemu.DisplayAccess;
@@ -80,6 +82,7 @@ import org.microemu.MIDletAccess;
 import org.microemu.MIDletBridge;
 import org.microemu.app.capture.AnimatedGifEncoder;
 import org.microemu.app.classloader.MIDletClassLoader;
+import org.microemu.app.multitab.EmulatorSession;
 import org.microemu.app.ui.DisplayRepaintListener;
 import org.microemu.app.ui.Message;
 import org.microemu.app.ui.ResponseInterfaceListener;
@@ -107,9 +110,9 @@ import org.microemu.device.DeviceFactory;
 import org.microemu.device.EmulatorContext;
 import org.microemu.device.FontManager;
 import org.microemu.device.InputMethod;
-import org.microemu.device.impl.DeviceDisplayImpl;                                    
-import org.microemu.device.impl.DeviceImpl;                                           
-import org.microemu.device.impl.Rectangle; 
+import org.microemu.device.impl.DeviceDisplayImpl;
+import org.microemu.device.impl.DeviceImpl;
+import org.microemu.device.impl.Rectangle;
 import org.microemu.device.impl.SoftButton;
 import org.microemu.device.j2se.J2SEDevice;
 import org.microemu.device.j2se.J2SEDeviceDisplay;
@@ -120,7 +123,12 @@ import org.microemu.log.Logger;
 import org.microemu.log.QueueAppender;
 import org.microemu.util.JadMidletEntry;
 
-public class Main extends JFrame {
+/**
+ * A single, isolated emulator session. It is instantiated inside its own
+ * {@link org.microemu.app.multitab.SessionClassLoader} so that all the static
+ * state of the emulator is private to this instance.
+ */
+public class Main extends JPanel implements EmulatorSession {
 
 	private static final long serialVersionUID = 1L;
 
@@ -176,6 +184,16 @@ public class Main extends JFrame {
 
 	private ResizeDeviceDisplayDialog resizeDeviceDisplayDialog = null;
 
+	private JMenuBar menuBar;
+
+	private String title = "MicroEmulator";
+
+	private Window ownerWindow;
+
+	private Runnable exitHandler;
+
+	private Runnable deviceChangeListener;
+
 	protected EmulatorContext emulatorContext = new EmulatorContext() {
 
 		private InputMethod inputMethod = new J2SEInputMethod();
@@ -203,7 +221,7 @@ public class Main extends JFrame {
 		public InputStream getResourceAsStream(Class origClass, String name) {
             return MIDletBridge.getCurrentMIDlet().getClass().getResourceAsStream(name);
 		}
-		
+
 		public boolean platformRequest(final String URL) {
 			new Thread(new Runnable() {
 				public void run() {
@@ -231,10 +249,7 @@ public class Main extends JFrame {
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
 				Config.setRecentDirectory("recentJadDirectory", fileChooser.getCurrentDirectory().getAbsolutePath());
 				String url = IOUtils.getCanonicalFileURL(fileChooser.getSelectedFile());
-				Common.openMIDletUrlSafe(url);
-				if (recordStoreManagerDialog != null) {
-					recordStoreManagerDialog.refresh();
-				}
+				openMIDlet(url);
 			}
 		}
 	};
@@ -244,18 +259,15 @@ public class Main extends JFrame {
 			if (midletUrlPanel == null) {
 				midletUrlPanel = new MIDletUrlPanel();
 			}
-			if (SwingDialogWindow.show(Main.this, "Enter MIDlet URL:", midletUrlPanel, true)) {
-				Common.openMIDletUrlSafe(midletUrlPanel.getText());
-				if (recordStoreManagerDialog != null) {
-					recordStoreManagerDialog.refresh();
-				}
+			if (SwingDialogWindow.show(getOwnerFrame(), "Enter MIDlet URL:", midletUrlPanel, true)) {
+				openMIDlet(midletUrlPanel.getText());
 			}
 		}
 	};
 
 	private ActionListener menuCloseMidletListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-			common.startLauncher(MIDletBridge.getMIDletContext());
+			closeCurrentMidlet();
 		}
 	};
 
@@ -467,7 +479,7 @@ public class Main extends JFrame {
 	private ActionListener menuRecordStoreManagerListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
 			if (recordStoreManagerDialog == null) {
-				recordStoreManagerDialog = new RecordStoreManagerDialog(Main.this, common);
+				recordStoreManagerDialog = new RecordStoreManagerDialog(getOwnerFrame(), common);
 				recordStoreManagerDialog.addWindowListener(new WindowAdapter() {
 					public void windowClosing(WindowEvent e) {
 						menuRecordStoreManager.setState(false);
@@ -484,7 +496,7 @@ public class Main extends JFrame {
 	private ActionListener menuLogConsoleListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
 			if (logConsoleDialog == null) {
-				logConsoleDialog = new SwingLogConsoleDialog(Main.this, Main.this.logQueueAppender);
+				logConsoleDialog = new SwingLogConsoleDialog(getOwnerFrame(), Main.this.logQueueAppender);
 				logConsoleDialog.addWindowListener(new WindowAdapter() {
 					public void windowClosing(WindowEvent e) {
 						menuLogConsole.setState(false);
@@ -502,7 +514,7 @@ public class Main extends JFrame {
 
 	private ActionListener menuAboutListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-			SwingDialogWindow.show(Main.this, "About", new SwingAboutDialog(), false);
+			SwingDialogWindow.show(getOwnerFrame(), "About", new SwingAboutDialog(), false);
 		}
 	};
 
@@ -515,29 +527,17 @@ public class Main extends JFrame {
 				}
 			}
 
-			if (logConsoleDialog != null) {
-				Config.setWindow("logConsole", new Rectangle(logConsoleDialog.getX(), logConsoleDialog.getY(),
-						logConsoleDialog.getWidth(), logConsoleDialog.getHeight()), logConsoleDialog.isVisible());
+			if (exitHandler != null) {
+				exitHandler.run();
+			} else {
+				System.exit(0);
 			}
-			if (recordStoreManagerDialog != null) {
-				Config.setWindow("recordStoreManager", new Rectangle(recordStoreManagerDialog.getX(),
-						recordStoreManagerDialog.getY(), recordStoreManagerDialog.getWidth(), recordStoreManagerDialog
-								.getHeight()), recordStoreManagerDialog.isVisible());
-			}
-			if (scaledDisplayFrame != null) {
-				Config.setWindow("scaledDisplay", new Rectangle(scaledDisplayFrame.getX(), scaledDisplayFrame.getY(),
-						0, 0), false);
-			}
-			Config.setWindow("main", new Rectangle(Main.this.getX(), Main.this.getY(), Main.this.getWidth(), Main.this
-					.getHeight()), true);
-
-			System.exit(0);
 		}
 	};
 
 	private ActionListener menuSelectDeviceListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-			if (SwingDialogWindow.show(Main.this, "Select device...", selectDevicePanel, true)) {
+			if (SwingDialogWindow.show(getOwnerFrame(), "Select device...", selectDevicePanel, true)) {
 				if (selectDevicePanel.getSelectedDeviceEntry().equals(deviceEntry)) {
 					return;
 				}
@@ -564,6 +564,9 @@ public class Main extends JFrame {
 						da.sizeChanged();
 						deviceDisplay.repaint(0, 0, deviceDisplay.getFullWidth(), deviceDisplay.getFullHeight());
 					}
+				}
+				if (deviceChangeListener != null) {
+					deviceChangeListener.run();
 				}
 			}
 		}
@@ -649,10 +652,12 @@ public class Main extends JFrame {
 				updateScaledImage(scale, scaledDisplayFrame);
 				((SwingDisplayComponent) emulatorContext.getDisplayComponent())
 						.addDisplayRepaintListener(updateScaledImageListener);
-				scaledDisplayFrame.setIconImage(getIconImage());
+				if (ownerWindow instanceof Frame) {
+					scaledDisplayFrame.setIconImage(((Frame) ownerWindow).getIconImage());
+				}
 				scaledDisplayFrame.setResizable(false);
-				Point location = getLocation();
-				Dimension size = getSize();
+				Point location = ownerWindow != null ? ownerWindow.getLocation() : getLocation();
+				Dimension size = ownerWindow != null ? ownerWindow.getSize() : getSize();
 				Rectangle window = Config.getWindow("scaledDisplay", new Rectangle(location.x + size.width, location.y,
 						0, 0));
 				scaledDisplayFrame.setLocation(window.x, window.y);
@@ -681,15 +686,15 @@ public class Main extends JFrame {
 		}
 
 		private void updateScaledImage(int scale, JFrame scaledLCDFrame) {
-			J2SEGraphicsSurface graphicsSurface = 
+			J2SEGraphicsSurface graphicsSurface =
 					((SwingDisplayComponent) emulatorContext.getDisplayComponent()).getGraphicsSurface();
-			
+
 			BufferedImage img = graphicsSurface.getImage();
 			BufferedImage scaledImg = new BufferedImage(img.getWidth() * scale, img.getHeight() * scale, img.getType());
 			Graphics2D imgGraphics = scaledImg.createGraphics();
 			imgGraphics.scale(scale, scale);
 			imgGraphics.drawImage(img, 0, 0, null);
-			
+
 			((ImageIcon) (((JLabel) scaledLCDFrame.getContentPane()).getIcon())).setImage(scaledImg);
 			((JLabel) scaledLCDFrame.getContentPane()).repaint();
 		}
@@ -750,24 +755,6 @@ public class Main extends JFrame {
 		}
 	};
 
-	private WindowAdapter windowListener = new WindowAdapter() {
-		public void windowClosing(WindowEvent ev) {
-			menuExitListener.actionPerformed(null);
-		}
-
-		public void windowIconified(WindowEvent ev) {
-			MIDletBridge.getMIDletAccess(MIDletBridge.getCurrentMIDlet()).pauseApp();
-		}
-
-		public void windowDeiconified(WindowEvent ev) {
-			try {
-				MIDletBridge.getMIDletAccess(MIDletBridge.getCurrentMIDlet()).startApp();
-			} catch (MIDletStateChangeException ex) {
-				System.err.println(ex);
-			}
-		}
-	};
-
 	public Main() {
 		this(null);
 	}
@@ -777,7 +764,9 @@ public class Main extends JFrame {
 		this.logQueueAppender = new QueueAppender(1024);
 		Logger.addAppender(logQueueAppender);
 
-		JMenuBar menuBar = new JMenuBar();
+		setLayout(new BorderLayout());
+
+		menuBar = new JMenuBar();
 
 		JMenu menuFile = new JMenu("File");
 
@@ -800,11 +789,7 @@ public class Main extends JFrame {
 		urlsMRU.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent event) {
 				if (event instanceof JMRUMenu.MRUActionEvent) {
-					Common.openMIDletUrlSafe(((MidletURLReference) ((JMRUMenu.MRUActionEvent) event).getSourceMRU())
-							.getUrl());
-					if (recordStoreManagerDialog != null) {
-						recordStoreManagerDialog.refresh();
-					}
+					openMIDlet(((MidletURLReference) ((JMRUMenu.MRUActionEvent) event).getSourceMRU()).getUrl());
 				}
 			}
 		});
@@ -883,21 +868,11 @@ public class Main extends JFrame {
 		menuBar.add(menuFile);
 		menuBar.add(menuOptions);
 		menuBar.add(menuHelp);
-		setJMenuBar(menuBar);
-
-		setTitle("MicroEmulator");
-
-		this.setIconImage(Toolkit.getDefaultToolkit().getImage(Main.class.getResource("/org/microemu/icon.png")));
-
-		addWindowListener(windowListener);
 
 		Config.loadConfig(defaultDevice, emulatorContext);
 		Logger.setLocationEnabled(Config.isLogConsoleLocationEnabled());
 
-		Rectangle window = Config.getWindow("main", new Rectangle(0, 0, 160, 120));
-		this.setLocation(window.x, window.y);
-
-		getContentPane().add(createContents(getContentPane()), "Center");
+		add(createContents(this), BorderLayout.CENTER);
 
 		selectDevicePanel = new SwingSelectDevicePanel(emulatorContext);
 
@@ -914,9 +889,9 @@ public class Main extends JFrame {
 				DeviceDisplayImpl deviceDisplay = (DeviceDisplayImpl) DeviceFactory.getDevice().getDeviceDisplay();
 				resizeDeviceDisplayDialog.setDeviceDisplaySize(deviceDisplay.getFullWidth(), deviceDisplay
 						.getFullHeight());
-				if (SwingDialogWindow.show(Main.this, "Enter new size...", resizeDeviceDisplayDialog, true)) {
+				if (SwingDialogWindow.show(getOwnerFrame(), "Enter new size...", resizeDeviceDisplayDialog, true)) {
 				    setDeviceSize(deviceDisplay, resizeDeviceDisplayDialog.getDeviceDisplayWidth(), resizeDeviceDisplayDialog.getDeviceDisplayHeight());
-					pack();
+					revalidate();
 					devicePanel.requestFocus();
 				}
 			}
@@ -927,9 +902,7 @@ public class Main extends JFrame {
 		statusPanel.add(statusBar, "West");
 		statusPanel.add(this.resizeButton, "East");
 
-		getContentPane().add(statusPanel, "South");
-
-		Message.addListener(new SwingErrorMessageDialogPanel(this));
+		add(statusPanel, BorderLayout.SOUTH);
 
 		devicePanel.setTransferHandler(new DropTransferHandler());
 	}
@@ -982,7 +955,7 @@ public class Main extends JFrame {
 		}
 		return false;
 	}
-	
+
 	protected void setDeviceSize(DeviceDisplayImpl deviceDisplay, int width, int height) {
 	    // move the soft buttons
 	    int menuh = 0;
@@ -1012,79 +985,187 @@ public class Main extends JFrame {
 	protected void updateDevice() {
 		devicePanel.init();
 		if (((DeviceDisplayImpl) DeviceFactory.getDevice().getDeviceDisplay()).isResizable()) {
-			setResizable(true);
 			resizeButton.setVisible(true);
 		} else {
-			setResizable(false);
 			resizeButton.setVisible(false);
 		}
 
-		pack();
+		revalidate();
 
 		devicePanel.requestFocus();
 	}
 
+	// ------------------------------------------------------------------
+	// EmulatorSession implementation
+	// ------------------------------------------------------------------
+
+	public JComponent getContent() {
+		return this;
+	}
+
+	public JMenuBar getMenuBar() {
+		return menuBar;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public void setOwnerWindow(Window owner) {
+		this.ownerWindow = owner;
+	}
+
+	public void setExitHandler(Runnable handler) {
+		this.exitHandler = handler;
+	}
+
+	public void setDeviceChangeListener(Runnable listener) {
+		this.deviceChangeListener = listener;
+	}
+
+	public void initSession(String[] args) {
+		List params = new ArrayList();
+		if (args != null) {
+			for (int i = 0; i < args.length; i++) {
+				params.add(args[i]);
+			}
+		}
+
+		try {
+			common.initParams(params, selectDevicePanel.getSelectedDeviceEntry(), J2SEDevice.class);
+		} catch (Throwable e) {
+			Logger.error("Unable to initialize emulator", e);
+		}
+
+		deviceEntry = selectDevicePanel.getSelectedDeviceEntry();
+		if (DeviceFactory.getDevice() != null) {
+			DeviceDisplayImpl deviceDisplay = (DeviceDisplayImpl) DeviceFactory.getDevice().getDeviceDisplay();
+			if (deviceDisplay.isResizable() && deviceEntry != null) {
+				Rectangle size = Config.getDeviceEntryDisplaySize(deviceEntry);
+				if (size != null) {
+					setDeviceSize(deviceDisplay, size.width, size.height);
+				}
+			}
+		}
+
+		updateDevice();
+
+		addComponentListener(componentListener);
+
+		Message.addListener(new SwingErrorMessageDialogPanel(getOwnerFrame()));
+
+		common.initMIDlet(true);
+
+		responseInterfaceListener.stateChanged(true);
+	}
+
+	public void openMIDlet(String url) {
+		Common.openMIDletUrlSafe(url);
+		String name = common.getSuiteName();
+		if (name != null && name.length() > 0) {
+			title = name;
+		}
+		if (recordStoreManagerDialog != null) {
+			recordStoreManagerDialog.refresh();
+		}
+	}
+
+	public void closeCurrentMidlet() {
+		common.startLauncher(MIDletBridge.getMIDletContext());
+	}
+
+	public String getDeviceDescriptor() {
+		return deviceEntry != null ? deviceEntry.getDescriptorLocation() : null;
+	}
+
+	public void applyDeviceDescriptor(String descriptorLocation) {
+		if (descriptorLocation == null) {
+			return;
+		}
+		for (Enumeration en = Config.getDeviceEntries().elements(); en.hasMoreElements();) {
+			DeviceEntry entry = (DeviceEntry) en.nextElement();
+			if (descriptorLocation.equals(entry.getDescriptorLocation())) {
+				if (deviceEntry == null || !descriptorLocation.equals(deviceEntry.getDescriptorLocation())) {
+					setDevice(entry);
+				}
+				return;
+			}
+		}
+	}
+
+	public void pauseMIDlet() {
+		MIDlet midlet = MIDletBridge.getCurrentMIDlet();
+		if (midlet != null) {
+			try {
+				MIDletBridge.getMIDletAccess(midlet).pauseApp();
+			} catch (Throwable e) {
+				// ignore
+			}
+		}
+	}
+
+	public void resumeMIDlet() {
+		MIDlet midlet = MIDletBridge.getCurrentMIDlet();
+		if (midlet != null) {
+			try {
+				MIDletBridge.getMIDletAccess(midlet).startApp();
+			} catch (Throwable e) {
+				// ignore
+			}
+		}
+	}
+
+	public void disposeSession() {
+		try {
+			MIDletAccess midletAccess = MIDletBridge.getMIDletAccess();
+			if (midletAccess != null) {
+				midletAccess.destroyApp(true);
+			}
+		} catch (Throwable e) {
+			// ignore
+		}
+		try {
+			Common.dispose();
+		} catch (Throwable e) {
+			// ignore
+		}
+		if (logConsoleDialog != null) {
+			logConsoleDialog.dispose();
+		}
+		if (recordStoreManagerDialog != null) {
+			recordStoreManagerDialog.dispose();
+		}
+		if (scaledDisplayFrame != null) {
+			scaledDisplayFrame.dispose();
+		}
+	}
+
+	private Frame getOwnerFrame() {
+		if (ownerWindow instanceof Frame) {
+			return (Frame) ownerWindow;
+		}
+		Window w = SwingUtilities.getWindowAncestor(this);
+		if (w instanceof Frame) {
+			return (Frame) w;
+		}
+		return null;
+	}
+
 	public static void main(String args[]) {
 		List params = new ArrayList();
-		StringBuffer debugArgs = new StringBuffer();
 		for (int i = 0; i < args.length; i++) {
 			params.add(args[i]);
-			if (debugArgs.length() != 0) {
-				debugArgs.append(", ");
-			}
-			debugArgs.append("[").append(args[i]).append("]");
 		}
 		if (params.contains("--headless")) {
 			Headless.main(args);
 			return;
 		}
 
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception ex) {
-			Logger.error(ex);
-		}
-
-		final Main app = new Main();
-		if (args.length > 0) {
-			Logger.debug("arguments", debugArgs.toString());
-		}
-		
-		if (app.common.initParams(params, app.selectDevicePanel.getSelectedDeviceEntry(), J2SEDevice.class)) {
-			app.deviceEntry = app.selectDevicePanel.getSelectedDeviceEntry();
-			DeviceDisplayImpl deviceDisplay = (DeviceDisplayImpl) DeviceFactory.getDevice().getDeviceDisplay();
-			if (deviceDisplay.isResizable()) {
-				Rectangle size = Config.getDeviceEntryDisplaySize(app.deviceEntry);
-				if (size != null) {
-					app.setDeviceSize(deviceDisplay, size.width, size.height);
-				}
-			}
-		}
-		app.updateDevice();
-
-		app.validate();
-		app.setVisible(true);
-
-		if (Config.isWindowOnStart("logConsole")) {
-			app.menuLogConsoleListener.actionPerformed(null);
-			app.menuLogConsole.setSelected(true);
-		}
-		if (Config.isWindowOnStart("recordStoreManager")) {
-			app.menuRecordStoreManagerListener.actionPerformed(null);
-			app.menuRecordStoreManager.setSelected(true);
-		}
-
-		String midletString;
-		try {
-			midletString = (String) params.iterator().next();
-		} catch (NoSuchElementException ex) {
-			midletString = null;
-		}
-		app.common.initMIDlet(true);
-
-		app.addComponentListener(app.componentListener);
-
-		app.responseInterfaceListener.stateChanged(true);
+		org.microemu.app.multitab.MultiMain.main(args);
 	}
 
 	private abstract class CountTimerTask extends TimerTask {
