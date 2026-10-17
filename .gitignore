@@ -1,0 +1,19 @@
+# Maven build output
+target/
+
+# Compiled classes
+*.class
+
+# Generated applet example pages
+microemulator/microemu-javase-applet/applet-*-example.html
+
+# IDE (local)
+.idea/
+*.iml
+.vscode/
+.settings/
+nbproject/
+
+# OS
+.DS_Store
+Thumbs.db
